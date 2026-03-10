@@ -34,6 +34,11 @@ class Config:
         ]
     )
 
+    # Mini App
+    webapp_url: str = field(default_factory=lambda: os.getenv("WEBAPP_URL", ""))
+    webapp_port: int = field(default_factory=lambda: int(os.getenv("WEBAPP_PORT", "8080")))
+
+
     def validate(self):
         """Raise early if required config is missing."""
         if not self.bot_token:

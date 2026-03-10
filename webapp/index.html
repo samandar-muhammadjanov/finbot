@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>Admin Panel</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg: #0f0f13;
+            --bg2: #1a1a23;
+            --bg3: #22222e;
+            --accent: #6c63ff;
+            --accent2: #a78bfa;
+            --green: #22c55e;
+            --red: #ef4444;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --border: #2d2d3d;
+            --radius: 14px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            padding: 20px 16px 16px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: .5px;
+        }
+
+        .header p {
+            font-size: 12px;
+            color: var(--accent2);
+            margin-top: 2px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 72px;
+            z-index: 99;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 4px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all .2s;
+            user-select: none;
+        }
+
+        .tab.active {
+            color: var(--accent2);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-icon {
+            font-size: 18px;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+            padding: 16px;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            margin-bottom: 12px;
+        }
+
+        /* Stats grid */
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .stat-box {
+            background: var(--bg3);
+            border-radius: 10px;
+            padding: 12px 8px;
+            text-align: center;
+        }
+
+        .stat-box .lbl {
+            font-size: 10px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .stat-box .val {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .val.green {
+            color: var(--green);
+        }
+
+        .val.red {
+            color: var(--red);
+        }
+
+        .val.purple {
+            color: var(--accent2);
+        }
+
+        /* Top categories */
+        .cat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .cat-item:last-child {
+            border-bottom: none;
+        }
+
+        .cat-item .name {
+            font-size: 13px;
+        }
+
+        .cat-item .amt {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent2);
+        }
+
+        /* Transaction list */
+        .tx-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            animation: fadeIn .2s ease;
+        }
+
+        .tx-item:last-child {
+            border-bottom: none;
+        }
+
+        .tx-icon {
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .tx-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tx-body .tx-cat {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tx-body .tx-meta {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .tx-right {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .tx-right .tx-amt {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .tx-right .tx-amt.income {
+            color: var(--green);
+        }
+
+        .tx-right .tx-amt.expense {
+            color: var(--red);
+        }
+
+        .btn-del {
+            background: rgba(239, 68, 68, .15);
+            border: none;
+            color: var(--red);
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .2s;
+        }
+
+        .btn-del:hover {
+            background: rgba(239, 68, 68, .3);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .btn-page {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background .2s;
+        }
+
+        .btn-page:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .btn-page:hover:not(:disabled) {
+            background: var(--bg2);
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 11px 14px;
+            font-size: 14px;
+            outline: none;
+            transition: border .2s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            border-color: var(--accent);
+        }
+
+        .form-select option {
+            background: var(--bg2);
+        }
+
+        .type-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .type-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            background: var(--bg3);
+            color: var(--muted);
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all .2s;
+            text-align: center;
+        }
+
+        .type-btn.active-income {
+            border-color: var(--green);
+            color: var(--green);
+            background: rgba(34, 197, 94, .1);
+        }
+
+        .type-btn.active-expense {
+            border-color: var(--red);
+            color: var(--red);
+            background: rgba(239, 68, 68, .1);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(108, 99, 255, .4);
+            transition: opacity .2s;
+        }
+
+        .btn-submit:active {
+            opacity: .8;
+        }
+
+        .btn-submit:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        /* Category chips */
+        .cat-chip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg3);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            animation: fadeIn .2s ease;
+        }
+
+        .cat-chip .chip-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cat-chip .chip-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .chip-dot.income {
+            background: var(--green);
+        }
+
+        .chip-dot.expense {
+            background: var(--red);
+        }
+
+        .cat-chip .chip-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .cat-chip .chip-type {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        /* Loader */
+        .loader {
+            text-align: center;
+            padding: 40px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: var(--shadow);
+            z-index: 999;
+            animation: fadeIn .2s ease;
+            white-space: nowrap;
+        }
+
+        .toast.success {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .toast.error {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .empty {
+            text-align: center;
+            padding: 32px 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>👑 Admin Panel</h1>
+        <p id="company-name">FinanceBot</p>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('stats')">
+            <span class="tab-icon">📊</span>Statistika
+        </div>
+        <div class="tab" onclick="switchTab('transactions')">
+            <span class="tab-icon">📋</span>Tranzaksiya
+        </div>
+        <div class="tab" onclick="switchTab('add')">
+            <span class="tab-icon">➕</span>Qo'shish
+        </div>
+        <div class="tab" onclick="switchTab('categories')">
+            <span class="tab-icon">🗂</span>Kategoriya
+        </div>
+    </div>
+
+    <!-- ═══ STATS ═══ -->
+    <div class="page active" id="page-stats">
+        <div id="stats-content">
+            <div class="loader"><span class="spinner"></span>Yuklanmoqda...</div>
+        </div>
+    </div>
+
+    <!-- ═══ TRANSACTIONS ═══ -->
+    <div class="page" id="page-transactions">
+        <div id="tx-content">
+            <div class="loader"><span class="spinner"></span>Yuklanmoqda...</div>
+        </div>
+        <div class="pagination">
+            <button class="btn-page" id="btn-prev" onclick="txPage(-1)" disabled>◀ Oldingi</button>
+            <button class="btn-page" id="btn-next" onclick="txPage(1)">Keyingi ▶</button>
+        </div>
+    </div>
+
+    <!-- ═══ ADD TRANSACTION ═══ -->
+    <div class="page" id="page-add">
+        <div class="card">
+            <div class="card-title">Tur</div>
+            <div class="type-toggle">
+                <div class="type-btn active-income" id="btn-income" onclick="setType('income')">💰 Daromad</div>
+                <div class="type-btn" id="btn-expense" onclick="setType('expense')">💸 Xarajat</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Kategoriya</label>
+                <select class="form-select" id="sel-category"></select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Summa (so'm)</label>
+                <input class="form-input" type="number" id="inp-amount" placeholder="Masalan: 500000" min="1" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Izoh (ixtiyoriy)</label>
+                <input class="form-input" type="text" id="inp-desc" placeholder="Sabab yoki eslatma" />
+            </div>
+
+            <button class="btn-submit" id="btn-save" onclick="saveTransaction()">✅ Saqlash</button>
+        </div>
+    </div>
+
+    <!-- ═══ CATEGORIES ═══ -->
+    <div class="page" id="page-categories">
+        <div class="card">
+            <div class="card-title">Yangi kategoriya qo'shish</div>
+            <div class="type-toggle">
+                <div class="type-btn active-income" id="cat-btn-income" onclick="setCatType('income')">💰 Daromad</div>
+                <div class="type-btn" id="cat-btn-expense" onclick="setCatType('expense')">💸 Xarajat</div>
+            </div>
+            <div class="form-group">
+                <input class="form-input" type="text" id="inp-cat-name" placeholder="Kategoriya nomi" />
+            </div>
+            <button class="btn-submit" onclick="saveCategory()">➕ Qo'shish</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Mavjud kategoriyalar</div>
+            <div id="cats-list">
+                <div class="loader"><span class="spinner"></span>Yuklanmoqda...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─────────────────────────────────────────
+        // Telegram Web App init
+        // ─────────────────────────────────────────
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const BASE = window.location.origin;
+        const INIT_DATA = tg.initData || "";
+
+        // ─────────────────────────────────────────
+        // HTTP helper
+        // ─────────────────────────────────────────
+        async function api(method, path, body) {
+            const opts = {
+                method,
+                headers: { "Content-Type": "application/json", "X-Init-Data": INIT_DATA }
+            };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(BASE + path, opts);
+            if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+            return res.json();
+        }
+
+        function fmt(amount) {
+            return Number(amount).toLocaleString("uz-UZ") + " so'm";
+        }
+
+        // ─────────────────────────────────────────
+        // Toast
+        // ─────────────────────────────────────────
+        let toastTimer;
+        function toast(msg, type = "success") {
+            clearTimeout(toastTimer);
+            let el = document.getElementById("toast");
+            if (!el) { el = document.createElement("div"); el.id = "toast"; document.body.appendChild(el); }
+            el.textContent = msg;
+            el.className = "toast " + type;
+            el.style.display = "block";
+            toastTimer = setTimeout(() => { el.style.display = "none"; }, 2500);
+        }
+
+        // ─────────────────────────────────────────
+        // Tabs
+        // ─────────────────────────────────────────
+        const loaders = { stats: false, transactions: false, categories: false };
+
+        function switchTab(name) {
+            document.querySelectorAll(".tab").forEach((t, i) => {
+                const names = ["stats", "transactions", "add", "categories"];
+                t.classList.toggle("active", names[i] === name);
+            });
+            document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+            document.getElementById("page-" + name).classList.add("active");
+
+            if (name === "stats" && !loaders.stats) loadStats();
+            if (name === "transactions" && !loaders.transactions) loadTransactions();
+            if (name === "add") loadCategoriesForForm();
+            if (name === "categories" && !loaders.categories) loadCategories();
+        }
+
+        // ─────────────────────────────────────────
+        // STATS
+        // ─────────────────────────────────────────
+        async function loadStats() {
+            loaders.stats = true;
+            const el = document.getElementById("stats-content");
+            try {
+                const d = await api("GET", "/api/stats");
+                el.innerHTML = `
+      ${statCard("🏦 Barcha vaqt", d.all_time)}
+      ${statCard("📅 Bugun", d.today)}
+      ${statCard("🗓 Bu oy", d.month)}
+      ${topCats("🔴 Top xarajat kategoriyalari", d.top_expense)}
+      ${topCats("🟢 Top daromad kategoriyalari", d.top_income)}
+    `;
+            } catch (e) {
+                el.innerHTML = `<div class="empty">❌ Xato: ${e.message}</div>`;
+                loaders.stats = false;
+            }
+        }
+
+        function statCard(title, data) {
+            return `
+  <div class="card">
+    <div class="card-title">${title}</div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="lbl">💰 Daromad</div><div class="val green">${fmt(data.income)}</div></div>
+      <div class="stat-box"><div class="lbl">💸 Xarajat</div><div class="val red">${fmt(data.expense)}</div></div>
+      <div class="stat-box"><div class="lbl">📈 Balans</div><div class="val purple">${fmt(data.balance)}</div></div>
+    </div>
+  </div>`;
+        }
+
+        function topCats(title, items) {
+            if (!items || !items.length) return "";
+            return `<div class="card">
+    <div class="card-title">${title}</div>
+    ${items.map(c => `<div class="cat-item"><span class="name">${c.name}</span><span class="amt">${fmt(c.amount)}</span></div>`).join("")}
+  </div>`;
+        }
+
+        // ─────────────────────────────────────────
+        // TRANSACTIONS
+        // ─────────────────────────────────────────
+        let txCurrentPage = 0;
+        let txTotal = 0;
+        const TX_PER_PAGE = 20;
+
+        async function loadTransactions(page = 0) {
+            txCurrentPage = page;
+            const el = document.getElementById("tx-content");
+            el.innerHTML = `<div class="loader"><span class="spinner"></span>Yuklanmoqda...</div>`;
+            try {
+                const d = await api("GET", `/api/transactions?page=${page}`);
+                txTotal = d.total;
+                if (!d.items.length) {
+                    el.innerHTML = `<div class="empty">📭 Tranzaksiyalar topilmadi</div>`;
+                } else {
+                    el.innerHTML = d.items.map(tx => `
+        <div class="tx-item" id="tx-${tx.id}">
+          <div class="tx-icon">${tx.type === "income" ? "💰" : "💸"}</div>
+          <div class="tx-body">
+            <div class="tx-cat">${tx.category}</div>
+            <div class="tx-meta">${tx.description || "—"} · ${tx.date}</div>
+          </div>
+          <div class="tx-right">
+            <div class="tx-amt ${tx.type}">${fmt(tx.amount)}</div>
+          </div>
+          <button class="btn-del" onclick="deleteTx(${tx.id})">🗑</button>
+        </div>`).join("");
+                }
+                document.getElementById("btn-prev").disabled = page === 0;
+                document.getElementById("btn-next").disabled = (page + 1) * TX_PER_PAGE >= txTotal;
+                loaders.transactions = true;
+            } catch (e) {
+                el.innerHTML = `<div class="empty">❌ Xato: ${e.message}</div>`;
+            }
+        }
+
+        async function deleteTx(id) {
+            if (!confirm(`#${id} tranzaksiyani o'chirishni tasdiqlaysizmi?`)) return;
+            try {
+                await api("DELETE", `/api/transactions/${id}`);
+                document.getElementById("tx-" + id)?.remove();
+                toast("✅ O'chirildi");
+                loaders.stats = false; // force stats refresh
+            } catch (e) {
+                toast("❌ " + e.message, "error");
+            }
+        }
+
+        function txPage(delta) {
+            const next = txCurrentPage + delta;
+            if (next < 0) return;
+            loadTransactions(next);
+        }
+
+        // ─────────────────────────────────────────
+        // ADD TRANSACTION
+        // ─────────────────────────────────────────
+        let addType = "income";
+        let allCategories = [];
+
+        function setType(type) {
+            addType = type;
+            document.getElementById("btn-income").className = "type-btn" + (type === "income" ? " active-income" : "");
+            document.getElementById("btn-expense").className = "type-btn" + (type === "expense" ? " active-expense" : "");
+            renderCategoryOptions();
+        }
+
+        async function loadCategoriesForForm() {
+            if (allCategories.length) { renderCategoryOptions(); return; }
+            try {
+                allCategories = await api("GET", "/api/categories");
+                renderCategoryOptions();
+            } catch (e) {
+                toast("❌ Kategoriyalar yuklanmadi", "error");
+            }
+        }
+
+        function renderCategoryOptions() {
+            const sel = document.getElementById("sel-category");
+            const filtered = allCategories.filter(c => c.type === addType);
+            sel.innerHTML = filtered.length
+                ? filtered.map(c => `<option value="${c.id}">${c.name}</option>`).join("")
+                : `<option value="">Kategoriya yo'q</option>`;
+        }
+
+        async function saveTransaction() {
+            const amount = parseFloat(document.getElementById("inp-amount").value);
+            const category_id = parseInt(document.getElementById("sel-category").value);
+            const description = document.getElementById("inp-desc").value.trim();
+
+            if (!amount || amount <= 0) { toast("⚠️ Summani kiriting", "error"); return; }
+            if (!category_id) { toast("⚠️ Kategoriya tanlang", "error"); return; }
+
+            const btn = document.getElementById("btn-save");
+            btn.disabled = true; btn.textContent = "Saqlanmoqda...";
+
+            try {
+                await api("POST", "/api/transactions", { type: addType, amount, category_id, description });
+                toast("✅ Tranzaksiya saqlandi!");
+                document.getElementById("inp-amount").value = "";
+                document.getElementById("inp-desc").value = "";
+                loaders.transactions = false; loaders.stats = false;
+                tg.HapticFeedback?.notificationOccurred("success");
+            } catch (e) {
+                toast("❌ " + e.message, "error");
+            } finally {
+                btn.disabled = false; btn.textContent = "✅ Saqlash";
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // CATEGORIES
+        // ─────────────────────────────────────────
+        let catType = "income";
+
+        function setCatType(type) {
+            catType = type;
+            document.getElementById("cat-btn-income").className = "type-btn" + (type === "income" ? " active-income" : "");
+            document.getElementById("cat-btn-expense").className = "type-btn" + (type === "expense" ? " active-expense" : "");
+        }
+
+        async function loadCategories() {
+            loaders.categories = true;
+            const el = document.getElementById("cats-list");
+            try {
+                const cats = await api("GET", "/api/categories");
+                allCategories = cats;
+                if (!cats.length) { el.innerHTML = `<div class="empty">Kategoriyalar yo'q</div>`; return; }
+                el.innerHTML = cats.map(c => `
+      <div class="cat-chip" id="cat-${c.id}">
+        <div class="chip-left">
+          <div class="chip-dot ${c.type}"></div>
+          <div>
+            <div class="chip-name">${c.name}</div>
+            <div class="chip-type">${c.type === "income" ? "Daromad" : "Xarajat"}</div>
+          </div>
+        </div>
+        <button class="btn-del" onclick="deleteCat(${c.id})">🗑</button>
+      </div>`).join("");
+            } catch (e) {
+                el.innerHTML = `<div class="empty">❌ ${e.message}</div>`;
+                loaders.categories = false;
+            }
+        }
+
+        async function saveCategory() {
+            const name = document.getElementById("inp-cat-name").value.trim();
+            if (!name) { toast("⚠️ Nom kiriting", "error"); return; }
+            try {
+                const cat = await api("POST", "/api/categories", { name, type: catType });
+                toast("✅ Kategoriya qo'shildi!");
+                document.getElementById("inp-cat-name").value = "";
+                allCategories.push(cat);
+                loaders.categories = false;
+                loadCategories();
+            } catch (e) {
+                toast("❌ " + e.message, "error");
+            }
+        }
+
+        async function deleteCat(id) {
+            if (!confirm("Bu kategoriyani o'chirishni tasdiqlaysizmi?")) return;
+            try {
+                await api("DELETE", `/api/categories/${id}`);
+                document.getElementById("cat-" + id)?.remove();
+                allCategories = allCategories.filter(c => c.id !== id);
+                toast("✅ O'chirildi");
+            } catch (e) {
+                toast("❌ " + e.message, "error");
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // Init
+        // ─────────────────────────────────────────
+        loadStats();
+    </script>
+</body>
+
+</html>

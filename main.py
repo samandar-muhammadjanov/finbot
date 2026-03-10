@@ -4,9 +4,11 @@ main.py — FinanceBot entry point.
 Startup sequence:
   1. Validate config
   2. Initialize database (create tables + seed defaults)
-  3. Build aiogram Dispatcher with FSM storage
-  4. Register middleware and routers
-  5. Start polling (or webhook in production)
+  3. Start aiohttp Mini App server (if WEBAPP_URL is configured)
+  4. Build aiogram Dispatcher with FSM storage
+  5. Register middleware and routers
+  6. Set Menu Button for admins (opens Mini App)
+  7. Start polling
 """
 
 import asyncio
@@ -17,6 +19,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import MenuButtonWebApp, MenuButtonDefault, WebAppInfo
 
 from bot.handlers import setup_routers
 from bot.middlewares import DatabaseMiddleware
@@ -41,22 +44,46 @@ async def on_startup(bot: Bot):
     await init_db()
     logger.info("Database ready.")
 
-    # Notify all admins that the bot has restarted
+    # Set Menu Button for admins → opens Mini App (if URL is configured)
+    if config.webapp_url:
+        for admin_id in config.admin_ids:
+            try:
+                await bot.set_chat_menu_button(
+                    chat_id=admin_id,
+                    menu_button=MenuButtonWebApp(
+                        text="📊 Admin Panel",
+                        web_app=WebAppInfo(url=config.webapp_url),
+                    ),
+                )
+                logger.info(f"Menu button set for admin {admin_id}")
+            except Exception as e:
+                logger.warning(f"Could not set menu button for admin {admin_id}: {e}")
+    else:
+        logger.warning("WEBAPP_URL not set — skipping menu button setup.")
+
+    # Notify admins on restart
     for admin_id in config.admin_ids:
         try:
-            await bot.send_message(
-                admin_id,
+            msg = (
                 f"🚀 *{config.company_name} FinanceBot* muvaffaqiyatli ishga tushdi!\n"
-                "Admin panelni ochish uchun /admin yozing.",
-                parse_mode="Markdown",
+                "Admin panelni ochish uchun /admin yozing."
             )
+            if config.webapp_url:
+                msg += "\n📊 Yoki pastdagi *Admin Panel* tugmasini bosing."
+            await bot.send_message(admin_id, msg, parse_mode="Markdown")
         except Exception as e:
             logger.warning(f"Could not notify admin {admin_id}: {e}")
 
 
-async def on_shutdown(bot: Bot):
+async def on_shutdown(bot: Bot, dispatcher: Dispatcher):
     """Cleanup on graceful shutdown."""
     logger.info("Bot is shutting down...")
+    
+    # Clean up web_runner if it exists
+    web_runner = dispatcher.workflow_data.get("web_runner")
+    if web_runner:
+        logger.info("Shutting down Mini App server...")
+        await web_runner.cleanup()
 
 
 async def main():
@@ -64,25 +91,32 @@ async def main():
     logger.info(f"Starting {config.company_name} FinanceBot...")
     logger.info(f"Admins: {config.admin_ids}")
 
-    # Bot instance with Markdown as default parse mode
+    # ── Start Mini App web server (if configured) ──
+    web_runner = None
+    if config.webapp_url:
+        from webapp.server import start_webapp
+        web_runner = await start_webapp()
+        logger.info(f"Mini App URL: {config.webapp_url}")
+    else:
+        logger.info("Mini App server not started (WEBAPP_URL not set). Run with ngrok to enable.")
+
+    # Bot instance
     bot = Bot(
         token=config.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
     )
 
-    # MemoryStorage is fine for development.
-    # For production use RedisStorage:
-    #   from aiogram.fsm.storage.redis import RedisStorage
-    #   storage = RedisStorage.from_url("redis://localhost:6379")
     storage = MemoryStorage()
-
     dp = Dispatcher(storage=storage)
 
-    # ── Middleware (order matters — runs outer→inner) ──
+    # ── Middleware ──
     dp.update.middleware(DatabaseMiddleware())
 
-    # ── Register all route handlers ──
+    # ── Routers ──
     dp.include_router(setup_routers())
+    
+    # Store web_runner in dispatcher data for graceful shutdown
+    dp.workflow_data["web_runner"] = web_runner
 
     # ── Lifecycle hooks ──
     dp.startup.register(on_startup)
