@@ -491,6 +491,27 @@
             color: var(--muted);
             font-size: 14px;
         }
+
+        /* Date separator */
+        .tx-date-sep {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 14px 0 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+        }
+
+        .tx-date-sep::before,
+        .tx-date-sep::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
     </style>
 </head>
 
@@ -704,18 +725,35 @@
                 if (!d.items.length) {
                     el.innerHTML = `<div class="empty">📭 Tranzaksiyalar topilmadi</div>`;
                 } else {
-                    el.innerHTML = d.items.map(tx => `
-        <div class="tx-item" id="tx-${tx.id}">
-          <div class="tx-icon">${tx.type === "income" ? "💰" : "💸"}</div>
-          <div class="tx-body">
-            <div class="tx-cat">${tx.category}</div>
-            <div class="tx-meta">${tx.description || "—"} · ${tx.date}</div>
-          </div>
-          <div class="tx-right">
-            <div class="tx-amt ${tx.type}">${fmt(tx.amount)}</div>
-          </div>
-          <button class="btn-del" onclick="deleteTx(${tx.id})">🗑</button>
-        </div>`).join("");
+                    // Group by date
+                    const groups = {};
+                    d.items.forEach(tx => {
+                        const datePart = tx.date.split(' ')[0]; // "DD.MM.YYYY"
+                        if (!groups[datePart]) groups[datePart] = [];
+                        groups[datePart].push(tx);
+                    });
+
+                    let html = '';
+                    for (const [date, txs] of Object.entries(groups)) {
+                        // Format date label: "11.03.2026" → "11 mart 2026"
+                        const [d2, m2, y2] = date.split('.');
+                        const months = ['yan','fev','mar','apr','may','iyn','iyl','avg','sen','okt','noy','dek'];
+                        const label = `${parseInt(d2)} ${months[parseInt(m2)-1]} ${y2}`;
+                        html += `<div class="tx-date-sep">${label}</div>`;
+                        html += txs.map(tx => `
+            <div class="tx-item" id="tx-${tx.id}">
+              <div class="tx-icon">${tx.type === "income" ? "💰" : "💸"}</div>
+              <div class="tx-body">
+                <div class="tx-cat">${tx.category}</div>
+                <div class="tx-meta">${tx.description || "—"} · ${tx.date.split(' ')[1]}</div>
+              </div>
+              <div class="tx-right">
+                <div class="tx-amt ${tx.type}">${fmt(tx.amount)}</div>
+              </div>
+              <button class="btn-del" onclick="deleteTx(${tx.id})">🗑</button>
+            </div>`).join('');
+                    }
+                    el.innerHTML = html;
                 }
                 document.getElementById("btn-prev").disabled = page === 0;
                 document.getElementById("btn-next").disabled = (page + 1) * TX_PER_PAGE >= txTotal;

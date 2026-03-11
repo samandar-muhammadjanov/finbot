@@ -34,6 +34,16 @@ class Config:
         ]
     )
 
+    # Bot user credentials: {"alice": "pass123", "bob": "secret"}
+    # Set in .env as: BOT_USERS=alice:pass123,bob:secret456
+    bot_users: dict = field(
+        default_factory=lambda: {
+            pair.split(":")[0].strip(): pair.split(":")[1].strip()
+            for pair in os.getenv("BOT_USERS", "").split(",")
+            if ":" in pair
+        }
+    )
+
     # Mini App
     webapp_url: str = field(default_factory=lambda: os.getenv("WEBAPP_URL", ""))
     webapp_port: int = field(default_factory=lambda: int(os.getenv("WEBAPP_PORT", "8080")))

@@ -19,7 +19,7 @@ router = Router(name="common")
 
 @router.message(Command("start"))
 async def cmd_start(message: Message, db_user: User):
-    """Welcome message — shows admin panel button for admins."""
+    """Welcome message — only reached if user is authenticated (auth router runs first)."""
     name = message.from_user.first_name if message.from_user else "foydalanuvchi"
     role = "👑 Admin" if db_user and db_user.is_admin else "👤 Foydalanuvchi"
 
@@ -34,6 +34,8 @@ async def cmd_start(message: Message, db_user: User):
         await message.answer(text, parse_mode="Markdown", reply_markup=admin_menu_keyboard())
     else:
         await message.answer(text, parse_mode="Markdown")
+
+
 
 
 @router.message(Command("help"))

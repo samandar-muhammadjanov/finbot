@@ -29,6 +29,7 @@ async def upsert_user(session: AsyncSession, tg_user: TgUser) -> User:
             username=tg_user.username,
             full_name=tg_user.full_name,
             is_admin=is_admin,
+            is_authenticated=is_admin,  # Admins are auto-authenticated
         )
         session.add(user)
     else:
@@ -36,6 +37,9 @@ async def upsert_user(session: AsyncSession, tg_user: TgUser) -> User:
         user.username = tg_user.username
         user.full_name = tg_user.full_name
         user.is_admin = is_admin  # reflect config changes without DB migration
+        if is_admin:
+            user.is_authenticated = True  # promote to authenticated if now admin
+
 
     await session.flush()
     return user

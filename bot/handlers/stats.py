@@ -4,7 +4,7 @@ bot/handlers/stats.py — Statistics and transaction history commands.
 Available to all users.
 """
 
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +17,7 @@ PER_PAGE = 10
 
 
 @router.message(Command("stats"))
+@router.message(F.text == "📊 Statistika")
 async def cmd_stats(message: Message, session: AsyncSession):
     """Display full financial statistics."""
     await message.answer("⏳ Statistika hisoblanmoqda...")
@@ -27,8 +28,10 @@ async def cmd_stats(message: Message, session: AsyncSession):
 
 
 @router.message(Command("transactions"))
+@router.message(F.text == "📋 Tranzaksiyalar")
 async def cmd_transactions(message: Message, session: AsyncSession):
     """Display the 10 most recent transactions."""
     transactions = await get_recent_transactions(session, limit=PER_PAGE)
     text = fmt_transaction_list(transactions)
     await message.answer(text, parse_mode="Markdown")
+

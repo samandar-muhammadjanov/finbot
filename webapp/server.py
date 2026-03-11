@@ -14,6 +14,7 @@ import logging
 from urllib.parse import parse_qsl, unquote
 
 from aiohttp import web
+from aiogram import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import config
@@ -28,6 +29,7 @@ from bot.services import (
     add_category,
     deactivate_category,
     get_transaction_by_id,
+    get_all_users,
 )
 
 logger = logging.getLogger(__name__)
@@ -183,12 +185,32 @@ async def post_transaction(request: web.Request) -> web.Response:
             created_by=user_id,
         )
         tx = await get_transaction_by_id(session, tx.id)
-        return json_ok({
+        result = json_ok({
             "id": tx.id,
             "type": tx.type.value,
             "amount": tx.amount,
             "category": tx.category_rel.name if tx.category_rel else "—",
         })
+
+        # Broadcast to all non-admin users
+        bot: Bot = request.app["bot"]
+        icon = "💰" if tx_type.value == "income" else "💸"
+        type_name = "daromad" if tx_type.value == "income" else "xarajat"
+        cat_name = tx.category_rel.name if tx.category_rel else "—"
+        notify_text = (
+            f"🔔 *Yangi {type_name} qo'shildi!*\n\n"
+            f"{icon} *Summa*: `{amount:,.0f} so'm`\n"
+            f"📂 *Kategoriya*: `{cat_name}`\n"
+            f"📝 *Izoh*: `{description or '—'}`"
+        )
+        all_users = await get_all_users(session)
+        for user in all_users:
+            try:
+                await bot.send_message(user.id, notify_text, parse_mode="Markdown")
+            except Exception:
+                pass  # User may have blocked the bot
+
+        return result
 
 
 @_require_admin
@@ -241,8 +263,9 @@ async def delete_cat(request: web.Request) -> web.Response:
 # App factory
 # ──────────────────────────────────────────────
 
-def create_app() -> web.Application:
+def create_app(bot: Bot) -> web.Application:
     app = web.Application()
+    app["bot"] = bot  # store bot for use in handlers
 
     import pathlib
     webapp_dir = pathlib.Path(__file__).parent
@@ -265,9 +288,9 @@ def create_app() -> web.Application:
     return app
 
 
-async def start_webapp() -> web.AppRunner:
+async def start_webapp(bot: Bot) -> web.AppRunner:
     """Start the aiohttp server (called from main.py)."""
-    app = create_app()
+    app = create_app(bot)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", config.webapp_port)

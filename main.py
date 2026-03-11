@@ -91,20 +91,20 @@ async def main():
     logger.info(f"Starting {config.company_name} FinanceBot...")
     logger.info(f"Admins: {config.admin_ids}")
 
-    # ── Start Mini App web server (if configured) ──
-    web_runner = None
-    if config.webapp_url:
-        from webapp.server import start_webapp
-        web_runner = await start_webapp()
-        logger.info(f"Mini App URL: {config.webapp_url}")
-    else:
-        logger.info("Mini App server not started (WEBAPP_URL not set). Run with ngrok to enable.")
-
-    # Bot instance
+    # Bot instance (created first so it can be passed to the web server)
     bot = Bot(
         token=config.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
     )
+
+    # ── Start Mini App web server (if configured) ──
+    web_runner = None
+    if config.webapp_url:
+        from webapp.server import start_webapp
+        web_runner = await start_webapp(bot)
+        logger.info(f"Mini App URL: {config.webapp_url}")
+    else:
+        logger.info("Mini App server not started (WEBAPP_URL not set). Run with ngrok to enable.")
 
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
